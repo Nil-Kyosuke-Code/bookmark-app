@@ -10,6 +10,8 @@
 
 import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
+import AddBookmarkForm from "@/components/AddBookmarkForm";
+import BookmarkList from "@/components/BookmarkList";
 
 export default async function DashboardPage() {
   // ログインしてるか確認する
@@ -49,10 +51,17 @@ export default async function DashboardPage() {
       {/* メインコンテンツ */}
       <main className="max-w-7xl max-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold md-4">
-            ようこそ！{session.user.name}さん！
-          </h2>
-          <p className="text-gray-600">{/* ブックマーク機能 */}</p>
+          <h2 className="text-xl font-semibold md-4">ブックマークを追加</h2>
+
+          {/* ブックマーク追加フォーム */}
+          <AddBookmarkForm />
+
+          <hr className="m-6" />
+
+          <h2 className="text-xl font-semibold md-4">保存したブックマーク</h2>
+
+          {/* ブックマーク一覧 */}
+          <BookmarkList />
         </div>
       </main>
     </div>
