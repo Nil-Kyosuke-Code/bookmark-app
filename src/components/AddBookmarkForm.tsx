@@ -28,16 +28,36 @@ export default function AddBookmarkForm() {
         .map((tag) => tag.trim()) // 前後の空白を削除
         .filter((tag) => tag.length > 0); // 空のタグを除外
 
-      // APIにブックマークを保存するリクエストを送る
-      const response = await fetch("/api/bookmarks", {
+      // メタ情報を取得
+      const metaResponse = await fetch("/api/meta", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url, tags: tagArray }),
+        body: JSON.stringify({ url }),
       });
 
-      if (response.ok) {
+      let metaData = { title: null, description: null, imageUrl: null };
+      if (metaResponse.ok) {
+        metaData = await metaResponse.json();
+      }
+
+      // メタ情報と一緒にブックマークを保存する
+      const bookmarkResponse = await fetch("/api/bookmarks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url,
+          tags: tagArray,
+          title: metaData.title,
+          description: metaData.description,
+          imageUrl: metaData.imageUrl,
+        }),
+      });
+
+      if (bookmarkResponse.ok) {
         setUrl(""); // 成功したら入力欄をクリア
         setTags("");
         alert("ブックマークを追加しました！");

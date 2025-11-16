@@ -52,8 +52,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
     }
 
-    // リクエストからURLとタグを取得
-    const { url, tags } = await request.json();
+    // リクエストからURLとメタ情報を取得
+    const { url, tags, title, description, imageUrl } = await request.json();
 
     if (!url) {
       return NextResponse.json({ error: "URLが必要です" }, { status: 400 });
@@ -76,6 +76,9 @@ export async function POST(request: Request) {
       data: {
         url,
         tags: tags || [], // タグがなければ空配列
+        title,
+        description,
+        imageUrl,
         userId: user.id,
       },
     });

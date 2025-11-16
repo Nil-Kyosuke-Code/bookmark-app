@@ -148,22 +148,48 @@ export default function BookmarkList() {
       {getFilteredBookmarks().map((bookmark) => (
         <div
           key={bookmark.id}
-          className="p-4 bg-white rounded-lg shadow border border-gray-200 hover:shadow-md transition-shadow"
+          className="bg-white rounded-lg shadow border border-gray-200 hover:shadow-lg transition-shadow overflow-hidden"
         >
-          <div className="flex justify-between items-start">
-            {/* URL表示 */}
-            <div className="flex-1">
-              <a
-                href={bookmark.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 font-medium break-all"
-              >
+          <div className="flex items-center">
+            {/* サムネイル画像 */}
+            {bookmark.imageUrl && (
+              <div className="w-48 h-32 flex-shrink-0">
+                <img
+                  src={bookmark.imageUrl}
+                  alt={bookmark.title || "サムネイル"}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+
+            {/* コンテンツ部分 */}
+            <div className="flex-1 p-4">
+              {/* タイトル */}
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <a
+                  href={bookmark.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-blue-600"
+                >
+                  {bookmark.title || bookmark.url}
+                </a>
+              </h3>
+
+              {/* 説明 */}
+              {bookmark.description && (
+                <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                  {bookmark.description}
+                </p>
+              )}
+
+              {/* URL */}
+              <p className="text-xs text-gray-400 mb-2 truncate">
                 {bookmark.url}
-              </a>
-              {/* タグ表示 */}
+              </p>
+              {/* タグ */}
               {bookmark.tags.length > 0 && (
-                <div>
+                <div className="flex flex-wrap gap-2 mb-2">
                   {bookmark.tags.map((tag, index) => (
                     <span
                       key={index}
@@ -175,19 +201,20 @@ export default function BookmarkList() {
                 </div>
               )}
 
-              <p className="text-sm text-gray-500 mt-1">
-                追加日:
-                {new Date(bookmark.createdAt).toLocaleDateString("ja-JP")}
-              </p>
+              {/* 追加日と削除ボタン */}
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-xs text-gray-500">
+                  追加日:{" "}
+                  {new Date(bookmark.createdAt).toLocaleDateString("ja-JP")}
+                </p>
+                <button
+                  onClick={() => handleDelete(bookmark.id)}
+                  className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                >
+                  削除
+                </button>
+              </div>
             </div>
-
-            {/* 削除ボタン */}
-            <button
-              onClick={() => handleDelete(bookmark.id)}
-              className="ml-4 px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              削除
-            </button>
           </div>
         </div>
       ))}
