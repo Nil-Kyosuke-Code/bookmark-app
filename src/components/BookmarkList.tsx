@@ -30,11 +30,27 @@ export default function BookmarkList() {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   // 読み込み中かどうか
   const [isLoading, setIsLoading] = useState(true);
+  // 選択中のタグ(フィルター用)
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   // コンポーネントが表示されたときにブックマークを取得
   useEffect(() => {
     fetchBookmarks();
   }, []);
+
+  // 全てのタグを重複なしで取得する関数
+  const getAllTags = () => {
+    // 全てのブックマークからタグを取り出す
+    const allTags = bookmarks.flatMap((bookmark) => bookmark.tags);
+    return Array.from(new Set(allTags)); // 重複を削除し、ユニークなタグだけにする
+  };
+
+  // 表示するブックマークをフィルターする関数
+  const getFilteredBookmarks = () => {
+    if (!selectedTag) return bookmarks;
+    // タグが選択されてたら、そのタグを持つものだけ表示する
+    return bookmarks.filter((bookmark) => bookmark.tags.includes(selectedTag));
+  };
 
   // ブックマークを取得する関数
   const fetchBookmarks = async () => {
@@ -79,7 +95,7 @@ export default function BookmarkList() {
   }
 
   // ブックマークが0件の場合
-  if (bookmarks.length === 0) {
+  if (getFilteredBookmarks().length === 0 && !selectedTag) {
     return (
       <div className="text-center py-8 text-gray-500">
         ブックマークがまだありません。
@@ -92,7 +108,44 @@ export default function BookmarkList() {
   // ブックマーク一覧を表示
   return (
     <div className="space-y-4">
-      {bookmarks.map((bookmark) => (
+      {/* タグフィルター */}
+      {getAllTags().length > 0 && (
+        <div className="mb-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">
+            タグで絞り込み
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {/* 全て表示ボタン */}
+            <button
+              onClick={() => setSelectedTag(null)}
+              className={`px-3 py-1 text-sm rounded-full ${
+                selectedTag === null
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              すべて表示
+            </button>
+
+            {/* タグボタン */}
+            {getAllTags().map((tag) => (
+              <button
+                key={tag}
+                onClick={() => setSelectedTag(tag)}
+                className={`px-3 py-1 text-sm rounded-full ${
+                  selectedTag === tag
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {getFilteredBookmarks().map((bookmark) => (
         <div
           key={bookmark.id}
           className="p-4 bg-white rounded-lg shadow border border-gray-200 hover:shadow-md transition-shadow"
@@ -108,9 +161,22 @@ export default function BookmarkList() {
               >
                 {bookmark.url}
               </a>
+              {/* タグ表示 */}
+              {bookmark.tags.length > 0 && (
+                <div>
+                  {bookmark.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               <p className="text-sm text-gray-500 mt-1">
-                追加日:{" "}
+                追加日:
                 {new Date(bookmark.createdAt).toLocaleDateString("ja-JP")}
               </p>
             </div>

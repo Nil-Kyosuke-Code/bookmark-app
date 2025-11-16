@@ -52,8 +52,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
     }
 
-    // リクエストからURLを取得
-    const { url } = await request.json();
+    // リクエストからURLとタグを取得
+    const { url, tags } = await request.json();
 
     if (!url) {
       return NextResponse.json({ error: "URLが必要です" }, { status: 400 });
@@ -75,6 +75,7 @@ export async function POST(request: Request) {
     const bookmark = await prisma.bookmark.create({
       data: {
         url,
+        tags: tags || [], // タグがなければ空配列
         userId: user.id,
       },
     });
