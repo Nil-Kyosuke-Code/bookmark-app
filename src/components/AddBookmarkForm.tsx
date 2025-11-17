@@ -8,8 +8,13 @@ import { useState } from "react";
 export default function AddBookmarkForm() {
   // 入力されたURLを保存する変数
   const [url, setUrl] = useState("");
+
   // 入力されたタグを保存する変数(カンマ区切り)
   const [tags, setTags] = useState("");
+
+  // カスタムタイトル(オプション)
+  const [customTitle, setCustomTitle] = useState("");
+
   // 送信中かどうかを管理
   const [isLoading, setIsLoading] = useState(false);
 
@@ -24,7 +29,7 @@ export default function AddBookmarkForm() {
     try {
       // タグをカンマで分割して配列にする
       const tagArray = tags
-        .split(",")
+        .split(/[,、]/) // 正規表現で , と 、 両方で分割
         .map((tag) => tag.trim()) // 前後の空白を削除
         .filter((tag) => tag.length > 0); // 空のタグを除外
 
@@ -51,7 +56,7 @@ export default function AddBookmarkForm() {
         body: JSON.stringify({
           url,
           tags: tagArray,
-          title: metaData.title,
+          title: customTitle.trim() || metaData.title,
           description: metaData.description,
           imageUrl: metaData.imageUrl,
         }),
@@ -60,6 +65,7 @@ export default function AddBookmarkForm() {
       if (bookmarkResponse.ok) {
         setUrl(""); // 成功したら入力欄をクリア
         setTags("");
+        setCustomTitle("");
         alert("ブックマークを追加しました！");
         window.location.reload(); // ページをリロードして一覧を更新
       } else {
@@ -88,20 +94,36 @@ export default function AddBookmarkForm() {
           required
         />
       </div>
+
+      {/* カスタムタイトル入力欄 */}
+      <div>
+        <label className="block text-sum font-medium text-gray-700 md-1">
+          タイトル
+        </label>
+        <input
+          type="text"
+          value={customTitle}
+          onChange={(e) => setCustomTitle(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          空白の場合、タイトルが自動取得されます
+        </p>
+      </div>
+
       {/* タグ入力欄 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          タグ（カンマ区切り）
+          タグ
         </label>
         <input
           type="text"
           value={tags}
           onChange={(e) => setTags(e.target.value)}
-          placeholder="React, Next.js, 開発"
           className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <p className="text-xs text-gray-500 mt-1">
-          例: React, Next.js, TypeScript
+          2つ以上の場合は、区切りを入れてください
         </p>
       </div>
 

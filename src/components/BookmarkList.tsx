@@ -11,7 +11,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Star } from "lucide-react";
+import { MoreVertical, Star } from "lucide-react";
 
 // ブックマークの型定義
 type Bookmark = {
@@ -31,8 +31,21 @@ export default function BookmarkList() {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   // 読み込み中かどうか
   const [isLoading, setIsLoading] = useState(true);
+
   // 選択中のタグ(フィルター用)
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
+  // 開いてるメニューのブックマークID
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  // 編集中のブックマーク
+  const [editingBookmark, setEditingBookmark] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+
+  // 編集中のタイトル
+  const [editTitle, setEditTitle] = useState("");
 
   // コンポーネントが表示されたときにブックマークを取得
   useEffect(() => {
@@ -117,6 +130,49 @@ export default function BookmarkList() {
     }
   };
 
+  // 編集モーダルを開く
+  const openEditModal = (bookmark: Bookmark) => {
+    setEditingBookmark({ id: bookmark.id, title: bookmark.title || "" });
+    setEditTitle(bookmark.title || "");
+    setOpenMenuId(null); // メニューを閉じる
+  };
+
+  // タイトルを保存
+  const handleSaveTitle = async () => {
+    if (!editingBookmark) return;
+
+    try {
+      const response = await fetch(
+        `/api/bookmarks/${editingBookmark.id}/title`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ title: editTitle.trim() }),
+        }
+      );
+
+      if (response.ok) {
+        // 成功したら一覧を再取得
+        fetchBookmarks();
+        setEditingBookmark(null);
+        setEditTitle("");
+      } else {
+        alert("タイトルの取得に失敗しました");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("エラーが発生しました");
+    }
+  };
+
+  // 編集をキャンセル
+  const cancelEdit = () => {
+    setEditingBookmark(null);
+    setEditTitle("");
+  };
+
   // 読み込み中の表示
   if (isLoading) {
     return <div className="text-center py-8">読み込み中...</div>;
@@ -160,7 +216,7 @@ export default function BookmarkList() {
             </button>
           </div>
           <div className="flex flex-wrap gap-2">
-            {/* 全て表示ボタン */}
+            {/* すべて表示ボタン */}
             <button
               onClick={() => setSelectedTag(null)}
               className={`px-3 py-1 text-sm rounded-full ${
@@ -198,7 +254,7 @@ export default function BookmarkList() {
           <div className="flex items-center">
             {/* サムネイル画像 */}
             {bookmark.imageUrl && (
-              <div className="w-48 h-32 flex-shrink-0">
+              <div className="w-48 h-32 flex-shrink-0 ml-4">
                 <img
                   src={bookmark.imageUrl}
                   alt={bookmark.title || "サムネイル"}
@@ -209,7 +265,7 @@ export default function BookmarkList() {
 
             {/* コンテンツ部分 */}
             <div className="flex-1 p-4">
-              {/* タイトルとお気に入りボタン */}
+              {/* タイトル・お気に入り・メニュー */}
               <div className="flex items-center gap-2 mb-2">
                 <h3 className="text-lg font-semibold text-gray-900 flex-1">
                   <a
@@ -230,7 +286,6 @@ export default function BookmarkList() {
                     bookmark.isFavorite ? "お気に入り解除" : "お気に入りに追加"
                   }
                 >
-                  {/* スターのアイコン */}
                   <Star
                     className={`w-6 h-6 ${
                       bookmark.isFavorite
@@ -239,6 +294,41 @@ export default function BookmarkList() {
                     }`}
                   />
                 </button>
+
+                {/* 3点ドットメニュー */}
+                <div className="relative">
+                  <button
+                    onClick={() =>
+                      setOpenMenuId(
+                        openMenuId === bookmark.id ? null : bookmark.id
+                      )
+                    }
+                    className="p-1 hover:bg-gray-100 rounded"
+                  >
+                    <MoreVertical className="w-5 h-5 text-gray-600" />
+                  </button>
+
+                  {/* メニュー */}
+                  {openMenuId === bookmark.id && (
+                    <div className="absolute right-0 mt-1 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                      <button
+                        onClick={() => openEditModal(bookmark)}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        タイトルを編集
+                      </button>
+                      <button
+                        onClick={() => {
+                          setOpenMenuId(null);
+                          handleDelete(bookmark.id);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                      >
+                        削除
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* 説明 */}
@@ -252,6 +342,7 @@ export default function BookmarkList() {
               <p className="text-xs text-gray-400 mb-2 truncate">
                 {bookmark.url}
               </p>
+
               {/* タグ */}
               {bookmark.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -283,6 +374,38 @@ export default function BookmarkList() {
           </div>
         </div>
       ))}
+      {/* タイトル編集モーダル */}
+      {editingBookmark && (
+        <div className="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">タイトルを編集</h3>
+
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="タイトルを入力"
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+              autoFocus
+            />
+
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={cancelEdit}
+                className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleSaveTitle}
+                className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
