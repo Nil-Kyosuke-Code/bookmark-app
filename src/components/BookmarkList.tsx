@@ -11,8 +11,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MoreVertical, Star } from "lucide-react";
-
+import { ArrowUpDown, MoreVertical, Star } from "lucide-react";
 // ブックマークの型定義
 type Bookmark = {
   id: string;
@@ -47,6 +46,11 @@ export default function BookmarkList() {
   // 編集中のタイトル
   const [editTitle, setEditTitle] = useState("");
 
+  // 並べ替えの種類
+  const [sortBy, setSortBy] = useState<
+    "newest" | "oldest" | "title" | "favorite"
+  >("newest");
+
   // コンポーネントが表示されたときにブックマークを取得
   useEffect(() => {
     fetchBookmarks();
@@ -71,6 +75,45 @@ export default function BookmarkList() {
 
     // タグフィルター(選択したタグを持つもののみ表示)
     return bookmarks.filter((bookmark) => bookmark.tags.includes(selectedTag));
+  };
+
+  // 並べ替えを適用する関数
+  const getSortedBookmarks = () => {
+    const filtered = getFilteredBookmarks();
+
+    switch (sortBy) {
+      case "newest":
+        // 新しい順(作成日時の降順)
+        return [...filtered].sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+      case "oldest":
+        // 古い順(作成日時の昇順)
+        return [...filtered].sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+
+      case "title":
+        // タイトル順
+        return [...filtered].sort((a, b) => {
+          const titleA = (a.title || a.url).toLowerCase();
+          const titleB = (b.title || b.url).toLowerCase();
+          return titleA.localeCompare(titleB);
+        });
+
+      case "favorite":
+        // お気に入りを先に表示
+        return [...filtered].sort((a, b) => {
+          if (a.isFavorite === b.isFavorite) return 0;
+          return a.isFavorite ? -1 : 1;
+        });
+
+      default:
+        return filtered;
+    }
   };
 
   // ブックマークを取得する関数
@@ -200,20 +243,99 @@ export default function BookmarkList() {
               タグで絞り込み
             </h3>
 
-            {/* お気に入りフィルター */}
-            <button
-              onClick={() =>
-                setSelectedTag(selectedTag === "favorites" ? null : "favorites")
-              }
-              className={`flex items-center gap-1 px-3 py-1 text-sm rounded-full ${
-                selectedTag === "favorites"
-                  ? "bg-yellow-400 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              <Star className="w-4 h-4" />
-              お気に入りのみ
-            </button>
+            {/* 右側のボタングループ */}
+            <div className="flex items-center gap-2">
+              {/* お気に入りフィルター */}
+              <button
+                onClick={() =>
+                  setSelectedTag(
+                    selectedTag === "favorites" ? null : "favorites"
+                  )
+                }
+                className={`flex items-center gap-1 px-3 py-1 text-sm rounded-full ${
+                  selectedTag === "favorites"
+                    ? "bg-yellow-400 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                <Star className="w-4 h-4" />
+                お気に入り
+              </button>
+
+              {/* 並べ替えボタン */}
+              <div className="relative">
+                <button
+                  onClick={() =>
+                    setOpenMenuId(openMenuId === "sort" ? null : "sort")
+                  }
+                  className="flex items-center gap-2 px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300"
+                >
+                  <ArrowUpDown className="w-4 h-4" />
+                  並べ替え
+                </button>
+
+                {/* 並べ替えメニュー */}
+                {openMenuId === "sort" && (
+                  <div className="absolute right-0 mt-1 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                    <button
+                      onClick={() => {
+                        setSortBy("newest");
+                        setOpenMenuId(null);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                        sortBy === "newest"
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      新しい順
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setSortBy("oldest");
+                        setOpenMenuId(null);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                        sortBy === "oldest"
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      古い順
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setSortBy("oldest");
+                        setOpenMenuId(null);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                        sortBy === "title"
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      タイトル順
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setSortBy("favorite");
+                        setOpenMenuId(null);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                        sortBy === "favorite"
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      お気に入り順
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             {/* すべて表示ボタン */}
@@ -246,7 +368,7 @@ export default function BookmarkList() {
         </div>
       )}
 
-      {getFilteredBookmarks().map((bookmark) => (
+      {getSortedBookmarks().map((bookmark) => (
         <div
           key={bookmark.id}
           className="bg-white rounded-lg shadow border border-gray-200 hover:shadow-lg transition-shadow overflow-hidden"
