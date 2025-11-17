@@ -11,6 +11,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Star } from "lucide-react";
 
 // ブックマークの型定義
 type Bookmark = {
@@ -47,8 +48,15 @@ export default function BookmarkList() {
 
   // 表示するブックマークをフィルターする関数
   const getFilteredBookmarks = () => {
+    // タグが選択されてなければ、全部表示
     if (!selectedTag) return bookmarks;
-    // タグが選択されてたら、そのタグを持つものだけ表示する
+
+    // お気に入りフィルター
+    if (selectedTag === "favorites") {
+      return bookmarks.filter((bookmark) => bookmark.isFavorite);
+    }
+
+    // タグフィルター(選択したタグを持つもののみ表示)
     return bookmarks.filter((bookmark) => bookmark.tags.includes(selectedTag));
   };
 
@@ -89,6 +97,26 @@ export default function BookmarkList() {
     }
   };
 
+  // お気に入りを切り替える関数
+  const handleToggleFavorite = async (id: string) => {
+    try {
+      // PATCHリクエストを送る
+      const response = await fetch(`/api/bookmarks/${id}/favorite`, {
+        method: "PATCH",
+      });
+
+      if (response.ok) {
+        // 成功したら一覧を再取得
+        fetchBookmarks();
+      } else {
+        alert("お気に入りの切り替えに失敗しました");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("エラーが発生しました");
+    }
+  };
+
   // 読み込み中の表示
   if (isLoading) {
     return <div className="text-center py-8">読み込み中...</div>;
@@ -111,9 +139,26 @@ export default function BookmarkList() {
       {/* タグフィルター */}
       {getAllTags().length > 0 && (
         <div className="mb-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">
-            タグで絞り込み
-          </h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-gray-700">
+              タグで絞り込み
+            </h3>
+
+            {/* お気に入りフィルター */}
+            <button
+              onClick={() =>
+                setSelectedTag(selectedTag === "favorites" ? null : "favorites")
+              }
+              className={`flex items-center gap-1 px-3 py-1 text-sm rounded-full ${
+                selectedTag === "favorites"
+                  ? "bg-yellow-400 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              <Star className="w-4 h-4" />
+              お気に入りのみ
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2">
             {/* 全て表示ボタン */}
             <button
@@ -164,17 +209,37 @@ export default function BookmarkList() {
 
             {/* コンテンツ部分 */}
             <div className="flex-1 p-4">
-              {/* タイトル */}
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                <a
-                  href={bookmark.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-blue-600"
+              {/* タイトルとお気に入りボタン */}
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 flex-1">
+                  <a
+                    href={bookmark.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-blue-600"
+                  >
+                    {bookmark.title || bookmark.url}
+                  </a>
+                </h3>
+
+                {/* お気に入りボタン */}
+                <button
+                  onClick={() => handleToggleFavorite(bookmark.id)}
+                  className="hover:scale-110 transition-transform"
+                  title={
+                    bookmark.isFavorite ? "お気に入り解除" : "お気に入りに追加"
+                  }
                 >
-                  {bookmark.title || bookmark.url}
-                </a>
-              </h3>
+                  {/* スターのアイコン */}
+                  <Star
+                    className={`w-6 h-6 ${
+                      bookmark.isFavorite
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "text-gray-400"
+                    }`}
+                  />
+                </button>
+              </div>
 
               {/* 説明 */}
               {bookmark.description && (
