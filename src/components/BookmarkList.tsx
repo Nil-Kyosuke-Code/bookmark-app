@@ -13,11 +13,16 @@ type Bookmark = {
   imageUrl: string | null;
   tags: string[];
   isFavorite: boolean;
+  folders?: { id: string; name: string }[];
   createdAt: string;
   updatedAt: string;
 };
 
-export default function BookmarkList() {
+type Props = {
+  selectedFolderId: string | null;
+};
+
+export default function BookmarkList({ selectedFolderId }: Props) {
   // ブックマーク一覧を保存する変数
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   // 読み込み中かどうか
@@ -70,6 +75,13 @@ export default function BookmarkList() {
   // 表示するブックマークをフィルターする関数
   const getFilteredBookmarks = () => {
     let filtered = bookmarks;
+
+    // フォルダでフィルター
+    if (selectedFolderId) {
+      filtered = filtered.filter((bookmark) =>
+        bookmark.folders?.some((folder: any) => folder.id === selectedFolderId)
+      );
+    }
 
     // 検索キーワードでフィルター
     if (searchQuery.trim()) {

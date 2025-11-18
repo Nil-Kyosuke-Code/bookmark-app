@@ -17,6 +17,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   bookmark      Bookmark[]
+  folders       Folder[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -62,7 +63,7 @@ model VerificationToken {
 
 // ブックマーク(ユーザーが保存したURLの情報)
 model Bookmark {
-  id String @id @default(cuid())
+  id          String @id @default(cuid())
   url         String
   title       String?
   description String?
@@ -71,8 +72,23 @@ model Bookmark {
   isFavorite  Boolean @default(false)
   userId      String
   user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folders     Folder[] @relation("BookmarkFolders")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// フォルダー
+model Folder {
+  id         String     @id @default(cuid())
+  name       String
+  isSecret   Boolean    @default(false)
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookmarks  Bookmark[] @relation("BookmarkFolders")
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
   @@index([userId])
 }

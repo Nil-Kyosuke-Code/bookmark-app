@@ -11,7 +11,8 @@
 import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
 import AddBookmarkForm from "@/components/AddBookmarkForm";
-import BookmarkList from "@/components/BookmarkList";
+import FolderSidebar from "@/components/FolderSidebar";
+import DashboardClient from "@/components/DashboardClient";
 
 export default async function DashboardPage() {
   // ログインしてるか確認する
@@ -49,25 +50,7 @@ export default async function DashboardPage() {
         </div>
       </header>
       {/* メインコンテンツ */}
-      <main className="max-w-7xl max-auto px-4 py-8 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-700 md-4">
-            ブックマークを追加
-          </h2>
-
-          {/* ブックマーク追加フォーム */}
-          <AddBookmarkForm />
-
-          <hr className="m-6" />
-
-          <h2 className="text-xl font-semibold text-gray-700 md-4">
-            保存したブックマーク
-          </h2>
-
-          {/* ブックマーク一覧 */}
-          <BookmarkList />
-        </div>
-      </main>
+      <DashboardClient />
     </div>
   );
 }
