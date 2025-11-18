@@ -26,6 +26,9 @@ export default function BookmarkList() {
   // 選択中のタグ(フィルター用)
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
+  // 検索キーワード
+  const [searchQuery, setSearchQuery] = useState("");
+
   // 開いてるメニューのブックマークID
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -66,16 +69,36 @@ export default function BookmarkList() {
 
   // 表示するブックマークをフィルターする関数
   const getFilteredBookmarks = () => {
-    // タグが選択されてなければ、全部表示
-    if (!selectedTag) return bookmarks;
+    let filtered = bookmarks;
+
+    // 検索キーワードでフィルター
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((bookmark) => {
+        const title = (bookmark.title || "").toLowerCase();
+        const url = bookmark.url.toLowerCase();
+        const description = (bookmark.description || "").toLowerCase();
+        const tags = bookmark.tags.join(" ").toLowerCase();
+
+        return (
+          title.includes(query) ||
+          url.includes(query) ||
+          description.includes(query) ||
+          tags.includes(query)
+        );
+      });
+    }
+
+    // タグが選択されてなければ、検索結果をそのまま返す
+    if (!selectedTag) return filtered;
 
     // お気に入りフィルター
     if (selectedTag === "favorites") {
-      return bookmarks.filter((bookmark) => bookmark.isFavorite);
+      return filtered.filter((bookmark) => bookmark.isFavorite);
     }
 
     // タグフィルター(選択したタグを持つもののみ表示)
-    return bookmarks.filter((bookmark) => bookmark.tags.includes(selectedTag));
+    return filtered.filter((bookmark) => bookmark.tags.includes(selectedTag));
   };
 
   // 並べ替えを適用する関数
@@ -272,12 +295,12 @@ export default function BookmarkList() {
   }
 
   // ブックマークが0件の場合
-  if (getFilteredBookmarks().length === 0 && !selectedTag) {
+  if (getFilteredBookmarks().length === 0 && !selectedTag && !searchQuery) {
     return (
       <div className="text-center py-8 text-gray-500">
         ブックマークがまだありません。
         <br />
-        上のフォームからURLを追加してみましょう！
+        上のフォームからURLを追加してみましょう!
       </div>
     );
   }
@@ -285,6 +308,22 @@ export default function BookmarkList() {
   // ブックマーク一覧を表示
   return (
     <div className="space-y-4">
+      {/* 検索ボックス */}
+      <div className="mb-4">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="タイトル、URL、説明、タグで検索..."
+          className="w-full px-4 py-2 text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {searchQuery && (
+          <p className="text-xs text-gray-500 mt-1">
+            検索中: "{searchQuery}" - {getFilteredBookmarks().length}件
+          </p>
+        )}
+      </div>
+
       {/* タグフィルター */}
       {getAllTags().length > 0 && (
         <div className="mb-4">
