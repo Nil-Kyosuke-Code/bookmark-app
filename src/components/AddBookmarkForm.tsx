@@ -3,7 +3,7 @@
 */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function AddBookmarkForm() {
   // 入力されたURLを保存する変数
@@ -17,6 +17,32 @@ export default function AddBookmarkForm() {
 
   // 送信中かどうかを管理
   const [isLoading, setIsLoading] = useState(false);
+
+  // 既存の全タグ(候補用)
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+
+  // タグを表示するか
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
+
+  // 既存のタグを取得
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const response = await fetch("/api/bookmarks");
+        if (response.ok) {
+          const bookmarks = await response.json();
+          // 全てのブックマークからタグを取り出して重複削除
+          const allTags = bookmarks.flatMap((b: any) => b.tags);
+          const uniqueTags: string[] = Array.from(new Set(allTags));
+          setAvailableTags(uniqueTags);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchTags();
+  }, []);
 
   // フォーム送信時の処理
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,7 +116,7 @@ export default function AddBookmarkForm() {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://example.com"
-          className="w-full px-4 py-2 text-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
         />
       </div>
@@ -104,7 +130,7 @@ export default function AddBookmarkForm() {
           type="text"
           value={customTitle}
           onChange={(e) => setCustomTitle(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <p className="text-xs text-gray-500 mt-1">
           空白の場合、タイトルが自動取得されます
@@ -120,8 +146,57 @@ export default function AddBookmarkForm() {
           type="text"
           value={tags}
           onChange={(e) => setTags(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onFocus={() => setShowTagSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowTagSuggestions(false), 200)}
+          className="w-full px-4 py-2 text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+
+        {/* タグ候補 */}
+        {showTagSuggestions && availableTags.length > 0 && (
+          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+            {availableTags
+              .filter((tag) => {
+                // 現在入力中のタグを配列に変換
+                const currentTags = tags
+                  .split(/[,、]/)
+                  .map((t) => t.trim())
+                  .filter((t) => t.length > 0);
+
+                // 入力済みのタグは除外
+                return !currentTags.includes(tag);
+              })
+
+              .map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => {
+                    // 既存のタグに追加
+                    if (!tags) {
+                      // 空の場合はタグ + , (次のタグを入力しやすくするため)
+                      setTags(`${tag},`);
+                    } else {
+                      // すでに入力がある場合
+                      const trimmed = tags.trim();
+                      // 最後に区切り文字があるか確認
+                      if (trimmed.endsWith(",") || trimmed.endsWith("、")) {
+                        // 区切り文字の後にスペースがあるか確認
+                        setTags(`${trimmed} ${tag}`);
+                      } else {
+                        // 区切り文字がない場合は追加
+                        setTags(`${trimmed}, ${tag}`);
+                      }
+                    }
+                    setShowTagSuggestions(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  {tag}
+                </button>
+              ))}
+          </div>
+        )}
+
         <p className="text-xs text-gray-500 mt-1">
           2つ以上の場合は、区切りを入れてください
         </p>

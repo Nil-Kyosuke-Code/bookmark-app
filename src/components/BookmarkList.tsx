@@ -1,11 +1,3 @@
-/*
-保存したブックマークを表示するコンポーネント(ブックマーク一覧)
-
-ブックマーク一覧を取得して表示
-削除ボタンで削除できる
-0件の時は「まだありません」と表示
-読み込み中は「読み込み中...」と表示
-*/
 // ブックマーク一覧
 // 保存したブックマークを表示するコンポーネント
 "use client";
@@ -45,6 +37,15 @@ export default function BookmarkList() {
 
   // 編集中のタイトル
   const [editTitle, setEditTitle] = useState("");
+
+  // 編集中のタグ
+  const [editingTags, setEditingTags] = useState<{
+    id: string;
+    tags: string[];
+  } | null>(null);
+
+  // 編集中のタグ入力値
+  const [editTagsInput, setEditTagsInput] = useState("");
 
   // 並べ替えの種類
   const [sortBy, setSortBy] = useState<
@@ -214,6 +215,55 @@ export default function BookmarkList() {
   const cancelEdit = () => {
     setEditingBookmark(null);
     setEditTitle("");
+  };
+
+  // タグ編集モーダルを開く
+  const openEditTagsModal = (bookmark: Bookmark) => {
+    setEditingTags({ id: bookmark.id, tags: bookmark.tags });
+    setEditTagsInput(""); // 空文字で開く
+    setOpenMenuId(null);
+  };
+
+  // タグを保存
+  const handleSaveTags = async () => {
+    if (!editingTags) return;
+
+    try {
+      // 入力値をタグ配列に変換
+      const tagArray = editTagsInput
+        .split(/[,、]/)
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0);
+
+      // 空の場合は元のタグを維持(変更なし)
+      const tagsToSave = tagArray.length > 0 ? tagArray : editingTags.tags;
+
+      const response = await fetch(`/api/bookmarks/${editingTags.id}/tags`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ tags: tagsToSave }),
+      });
+
+      if (response.ok) {
+        // 成功したら一覧を再取得
+        fetchBookmarks();
+        setEditingTags(null);
+        setEditTagsInput("");
+      } else {
+        alert("タグの変更に失敗しました");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("エラーが発生しました");
+    }
+  };
+
+  // タグ編集をキャンセル
+  const cancelEditTags = () => {
+    setEditingTags(null);
+    setEditTagsInput("");
   };
 
   // 読み込み中の表示
@@ -439,6 +489,14 @@ export default function BookmarkList() {
                       >
                         タイトルを編集
                       </button>
+
+                      <button
+                        onClick={() => openEditTagsModal(bookmark)}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        タグを編集
+                      </button>
+
                       <button
                         onClick={() => {
                           setOpenMenuId(null);
@@ -520,6 +578,86 @@ export default function BookmarkList() {
               </button>
               <button
                 onClick={handleSaveTitle}
+                className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* タグ編集モーダル */}
+      {editingTags && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">タグを編集</h3>
+
+            <div className="relative">
+              <input
+                type="text"
+                value={editTagsInput}
+                onChange={(e) => setEditTagsInput(e.target.value)}
+                className="w-full px-4 py-2 text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+                autoFocus
+              />
+
+              {/* タグ候補 */}
+              <div className="mb-4">
+                <p className="text-xs text-gray-500 mb-2">既存タグから選択</p>
+                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                  {getAllTags()
+                    .filter((tag) => {
+                      // 現在入力中のタグを配列に変換
+                      const currentTags = editTagsInput
+                        .split(/[,、]/)
+                        .map((t) => t.trim())
+                        .filter((t) => t.length > 0);
+                      // 入力済みのタグは除外
+                      return !currentTags.includes(tag);
+                    })
+                    .map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => {
+                          // タグを追加
+                          if (!editTagsInput) {
+                            setEditTagsInput(`${tag},`);
+                          } else {
+                            const trimmed = editTagsInput.trim();
+                            if (
+                              trimmed.endsWith(",") ||
+                              trimmed.endsWith("、")
+                            ) {
+                              setEditTagsInput(`${trimmed} ${tag},`);
+                            } else {
+                              setEditTagsInput(`${trimmed}, ${tag},`);
+                            }
+                          }
+                        }}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200"
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-500 mb-4">
+                カンマ（,）または読点（、）で区切ってください
+              </p>
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={cancelEditTags}
+                className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300"
+              >
+                キャンセル
+              </button>
+
+              <button
+                onClick={handleSaveTags}
                 className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
               >
                 保存
