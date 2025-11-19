@@ -310,9 +310,15 @@ export default function BookmarkList({ selectedFolderId }: Props) {
   if (getFilteredBookmarks().length === 0 && !selectedTag && !searchQuery) {
     return (
       <div className="text-center py-8 text-gray-500">
-        ブックマークがまだありません。
-        <br />
-        上のフォームからURLを追加してみましょう!
+        {selectedFolderId ? (
+          <>保存されたブックマークはありません</>
+        ) : (
+          <>
+            ブックマークがまだありません
+            <br />
+            上のフォームからURLを追加してみましょう！
+          </>
+        )}
       </div>
     );
   }
