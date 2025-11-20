@@ -224,19 +224,21 @@ export default function AppSidebar({
                 {folders.map((folder) => (
                   <div key={folder.id} className="mb-2 group relative">
                     <div
-                      className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2 ${
+                      className={`w-full px-3 py-2 rounded-md flex items-center gap-2 ${
                         selectedFolderId === folder.id
                           ? "bg-blue-50 text-blue-600"
                           : "hover:bg-gray-100 text-gray-700"
                       }`}
                     >
+                      <FolderOpen className="w-4 h-4 flex-shrink-0" />
                       <button
                         onClick={() => onSelectFolder(folder.id)}
-                        className="flex items-center gap-2 flex-1"
+                        className="text-left truncate"
                       >
-                        <FolderOpen className="w-4 h-4 flex-shrink-0" />
-                        <span className="flex-1 truncate">{folder.name}</span>
+                        {folder.name}
                       </button>
+
+                      <div className="flex-1" />
 
                       {/* 3点メニューボタン */}
                       <button

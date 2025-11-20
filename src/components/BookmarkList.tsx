@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowUpDown, MoreVertical, Star } from "lucide-react";
+import { ArrowUpDown, MoreVertical, Star, FolderOpen } from "lucide-react";
 // ブックマークの型定義
 type Bookmark = {
   id: string;
@@ -59,6 +59,12 @@ export default function BookmarkList({ selectedFolderId }: Props) {
   const [sortBy, setSortBy] = useState<
     "newest" | "oldest" | "title" | "favorite"
   >("newest");
+
+  // フォルダ選択モーダル表示中のブックマークID
+  const [showFolderModal, setShowFolderModal] = useState<string | null>(null);
+
+  // フォルダ一覧を取得して表示
+  const [folders, setFolders] = useState<any[]>([]);
 
   // コンポーネントが表示されたときにブックマークを取得
   useEffect(() => {
@@ -166,6 +172,22 @@ export default function BookmarkList({ selectedFolderId }: Props) {
       setIsLoading(false);
     }
   };
+
+  // フォルダ一覧を取得
+  useEffect(() => {
+    const fetchFolders = async () => {
+      try {
+        const response = await fetch("/api/folders");
+        if (response.ok) {
+          const data = await response.json();
+          setFolders(data);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchFolders();
+  }, []);
 
   // ブックマークを削除する関数
   const handleDelete = async (id: string) => {
@@ -288,6 +310,28 @@ export default function BookmarkList({ selectedFolderId }: Props) {
         setEditTagsInput("");
       } else {
         alert("タグの変更に失敗しました");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("エラーが発生しました");
+    }
+  };
+
+  // フォルダに追加
+  const handleAddToFolder = async (bookmarkId: string, folderId: string) => {
+    try {
+      const response = await fetch(`/api/bookmarks/${bookmarkId}/folder`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderId }),
+      });
+
+      if (response.ok) {
+        setShowFolderModal(null);
+        fetchBookmarks();
+        alert("フォルダに追加しました");
+      } else {
+        alert("追加に失敗しました");
       }
     } catch (error) {
       console.error(error);
@@ -478,7 +522,7 @@ export default function BookmarkList({ selectedFolderId }: Props) {
       {getSortedBookmarks().map((bookmark) => (
         <div
           key={bookmark.id}
-          className="bg-white rounded-lg shadow border border-gray-200 hover:shadow-lg transition-shadow overflow-hidden"
+          className="bg-white rounded-lg shadow border border-gray-200 hover:shadow-lg transition-shadow overflow-visible"
         >
           <div className="flex items-center">
             {/* サムネイル画像 */}
@@ -552,6 +596,16 @@ export default function BookmarkList({ selectedFolderId }: Props) {
                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         タグを編集
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowFolderModal(bookmark.id);
+                          setOpenMenuId(null);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        フォルダに追加
                       </button>
 
                       <button
@@ -718,6 +772,41 @@ export default function BookmarkList({ selectedFolderId }: Props) {
                 className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
               >
                 保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* タグ編集モーダル */}
+      {showFolderModal && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">フォルダに追加</h3>
+
+            {/* フォルダ一覧 */}
+            <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
+              <p className="text-sm text-gray-500 mb-2">
+                フォルダを選択してください
+              </p>
+
+              {folders.map((folder) => (
+                <button
+                  key={folder.id}
+                  onClick={() => handleAddToFolder(showFolderModal!, folder.id)}
+                  className="w-full text-left px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <FolderOpen className="w-4 h-4" />
+                  {folder.name}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowFolderModal(null)}
+                className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300"
+              >
+                キャンセル
               </button>
             </div>
           </div>
