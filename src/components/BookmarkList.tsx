@@ -339,6 +339,30 @@ export default function BookmarkList({ selectedFolderId }: Props) {
     }
   };
 
+  // フォルダから削除
+  const handleRemoveFromFolder = async (
+    bookmarkId: string,
+    folderId: string
+  ) => {
+    try {
+      const response = await fetch(`/api/bookmarks/${bookmarkId}/folder`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderId }),
+      });
+
+      if (response.ok) {
+        fetchBookmarks();
+        alert("フォルダから削除しました");
+      } else {
+        alert("削除に失敗しました");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("エラーが発生しました");
+    }
+  };
+
   // タグ編集をキャンセル
   const cancelEditTags = () => {
     setEditingTags(null);
@@ -607,6 +631,22 @@ export default function BookmarkList({ selectedFolderId }: Props) {
                       >
                         フォルダに追加
                       </button>
+
+                      {/* フォルダ内表示時のみ表示 */}
+                      {selectedFolderId && (
+                        <button
+                          onClick={() => {
+                            handleRemoveFromFolder(
+                              bookmark.id,
+                              selectedFolderId
+                            );
+                            setOpenMenuId(null);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-gray-100"
+                        >
+                          このフォルダから削除
+                        </button>
+                      )}
 
                       <button
                         onClick={() => {
