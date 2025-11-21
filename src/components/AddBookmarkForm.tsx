@@ -3,6 +3,7 @@
 */
 "use client";
 
+import { FolderOpen } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function AddBookmarkForm() {
@@ -15,11 +16,17 @@ export default function AddBookmarkForm() {
   // カスタムタイトル(オプション)
   const [customTitle, setCustomTitle] = useState("");
 
+  // 追加されたフォルダID(任意)、空文字列 = フォルダ未選択
+  const [selectedFolderId, setSelectedFolderId] = useState<string>("");
+
   // 送信中かどうかを管理
   const [isLoading, setIsLoading] = useState(false);
 
   // 既存の全タグ(候補用)
   const [availableTags, setAvailableTags] = useState<string[]>([]);
+
+  // フォルダ一覧を保存する変数
+  const [folders, setFolders] = useState<any[]>([]);
 
   // タグを表示するか
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
@@ -42,6 +49,23 @@ export default function AddBookmarkForm() {
     };
 
     fetchTags();
+  }, []);
+
+  // フォルダ一覧を取得
+  useEffect(() => {
+    const fetchFolders = async () => {
+      try {
+        // フォルダ一覧APIを呼び出す
+        const response = await fetch("/api/folders");
+        if (response.ok) {
+          const data = await response.json();
+          setFolders(data); // フォルダ一覧をstateに保存
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchFolders();
   }, []);
 
   // フォーム送信時の処理
@@ -89,9 +113,26 @@ export default function AddBookmarkForm() {
       });
 
       if (bookmarkResponse.ok) {
-        setUrl(""); // 成功したら入力欄をクリア
+        // フォルダが選択されていた場合、紐付けを行う
+        if (selectedFolderId) {
+          // 作成されたブックマークの情報を取得
+          const bookmark = await bookmarkResponse.json();
+
+          // フォルダとブックマークを繋げるAPIを呼び出し
+          await fetch(`/api/bookmarks/${bookmark.id}/folder`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ folderId: selectedFolderId }),
+          });
+        }
+
+        // 成功したら入力欄をクリア
+        setUrl("");
         setTags("");
         setCustomTitle("");
+        setSelectedFolderId("");
         alert("ブックマークを追加しました！");
         window.location.reload(); // ページをリロードして一覧を更新
       } else {
@@ -200,6 +241,34 @@ export default function AddBookmarkForm() {
         <p className="text-xs text-gray-500 mt-1">
           2つ以上の場合は、区切りを入れてください
         </p>
+      </div>
+
+      {/* フォルダ選択ドロップダウン */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          フォルダ選択
+        </label>
+        <div className="relative">
+          <FolderOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+
+          {/* セレクトボックス */}
+          <select
+            value={selectedFolderId}
+            onChange={(e) => setSelectedFolderId(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 text-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
+          >
+            {/* デフォルト選択肢: 空文字列 = フォルダに追加しない */}
+            <option value="">フォルダを選択しない</option>
+
+            {/* フォルダ一覧をループで表示 */}
+            {folders.map((folder) => (
+              <option key={folder.id} value={folder.id}>
+                {folder.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">フォルダに直接追加する</p>
       </div>
 
       {/* 追加ボタン */}
