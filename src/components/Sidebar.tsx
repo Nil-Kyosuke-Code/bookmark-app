@@ -25,12 +25,14 @@ type Props = {
   selectedFolderId: string | null;
   onSelectFolder: (folderId: string | null) => void;
   onFolderUpdate: () => void;
+  onBookmarkUpdate: () => void;
 };
 
 export default function AppSidebar({
   selectedFolderId,
   onSelectFolder,
   onFolderUpdate,
+  onBookmarkUpdate,
 }: Props) {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [newFolderName, setNewFolderName] = useState("");
@@ -42,6 +44,8 @@ export default function AppSidebar({
     name: string;
   } | null>(null);
   const [editFolderName, setEditFolderName] = useState("");
+  // マウスが乗っているフォルダIDを保存する
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
 
   // フォルダ一覧を取得
   const fetchFolders = async () => {
@@ -126,6 +130,46 @@ export default function AppSidebar({
       }
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  // ドラッグ中マウスがフォルダの上に来たときの処理
+  const handleDragOver = (e: React.DragEvent, folderId: string) => {
+    e.preventDefault(); // これが無いとドロップできない
+    setDragOverFolderId(folderId);
+  };
+
+  // ドラッグ中のマウスがフォルダから離れたときの処理
+  const handleDragLeave = () => {
+    setDragOverFolderId(null);
+  };
+
+  // フォルダの上でドロップしたときの処理
+  const handleDrop = async (e: React.DragEvent, folderId: string) => {
+    e.preventDefault();
+    setDragOverFolderId(null);
+
+    const bookmarkId = e.dataTransfer.getData("bookmarkId");
+
+    if (!bookmarkId) return;
+
+    try {
+      const response = await fetch(`/api/bookmarks/${bookmarkId}/folder`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderId }),
+      });
+
+      if (response.ok) {
+        alert("フォルダに追加しました");
+        onFolderUpdate(); // フォルダ一覧を更新
+        onBookmarkUpdate();
+      } else {
+        alert("追加に失敗しました");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("エラーが発生しました");
     }
   };
 
@@ -224,10 +268,15 @@ export default function AppSidebar({
                 {folders.map((folder) => (
                   <div key={folder.id} className="mb-2 group relative">
                     <div
-                      className={`w-full px-3 py-2 rounded-md flex items-center gap-2 ${
+                      onDragOver={(e) => handleDragOver(e, folder.id)} // ドラッグ中のマウスがフォルダの上に来た時
+                      onDragLeave={handleDragLeave} // ドラッグ中のマウスがフォルダから離れた時
+                      onDrop={(e) => handleDrop(e, folder.id)} // フォルダの上でドロップした時
+                      className={`w-full px-3 py-2 rounded-md flex items-center gap-2 transition-colors ${
                         selectedFolderId === folder.id
-                          ? "bg-blue-50 text-blue-600"
-                          : "hover:bg-gray-100 text-gray-700"
+                          ? "bg-blue-50 text-blue-600" // 選択中のフォルダは青色
+                          : dragOverFolderId === folder.id
+                          ? "bg-green-50 border-2 border-green-400" // ドラッグ中は緑色にハイライト
+                          : "hover:bg-gray-100 text-gray-700" // 通常時
                       }`}
                     >
                       <FolderOpen className="w-4 h-4 flex-shrink-0" />

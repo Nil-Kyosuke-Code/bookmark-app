@@ -156,6 +156,12 @@ export default function AddBookmarkForm() {
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => {
+            // 変換中の時はEnterを無視
+            if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+              handleSubmit(e);
+            }
+          }}
           placeholder="https://example.com"
           className="w-full px-4 py-2 text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
@@ -171,6 +177,11 @@ export default function AddBookmarkForm() {
           type="text"
           value={customTitle}
           onChange={(e) => setCustomTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+              handleSubmit(e);
+            }
+          }}
           className="w-full px-4 py-2 text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <p className="text-xs text-gray-500 mt-1">
@@ -187,6 +198,11 @@ export default function AddBookmarkForm() {
           type="text"
           value={tags}
           onChange={(e) => setTags(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+              handleSubmit(e);
+            }
+          }}
           onFocus={() => setShowTagSuggestions(true)}
           onBlur={() => setTimeout(() => setShowTagSuggestions(false), 200)}
           className="w-full px-4 py-2 text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

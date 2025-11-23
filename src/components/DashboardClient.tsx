@@ -7,9 +7,19 @@ import AppSidebar from "./Sidebar";
 import { FolderOpen } from "lucide-react";
 
 export default function DashboardClient() {
+  // localStorageから初期値を取得（リロード時にページを維持するため）
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [folders, setFolders] = useState<any[]>([]);
+  const [bookmarkUpdateKey, setBookmarkUpdateKey] = useState(0);
+
+  // クライアント側で初回レンダリング後にlocalStorageから復元（Hydration Errorを防ぐため）
+  useEffect(() => {
+    const saved = localStorage.getItem("selectedFolderId");
+    if (saved) {
+      setSelectedFolderId(saved);
+    }
+  }, []);
 
   // フォルダを取得する
   const fetchFolders = useCallback(async () => {
@@ -24,6 +34,22 @@ export default function DashboardClient() {
     }
   }, []);
 
+  // ブックマーク更新を通知する関数（Sidebarから呼ばれる）
+  const handleBookmarkUpdate = useCallback(() => {
+    console.log("DashboardClient: ブックマーク更新通知を受け取りました");
+    // この関数が呼ばれたことをBookmarkListに伝えるため、keyを変更
+    setBookmarkUpdateKey((prev) => prev + 1);
+  }, []);
+
+  // selectedFolderIdが変更されたらlocalStorageに保存(リロード時に復元するため)
+  useEffect(() => {
+    if (selectedFolderId) {
+      localStorage.setItem("selectedFolderId", selectedFolderId);
+    } else {
+      localStorage.removeItem("selectedFolderId");
+    }
+  }, [selectedFolderId]);
+
   useEffect(() => {
     fetchFolders();
   }, []);
@@ -35,6 +61,7 @@ export default function DashboardClient() {
         selectedFolderId={selectedFolderId}
         onSelectFolder={setSelectedFolderId}
         onFolderUpdate={fetchFolders}
+        onBookmarkUpdate={handleBookmarkUpdate}
       />
 
       {/* メインコンテンツ */}
@@ -55,7 +82,7 @@ export default function DashboardClient() {
             </div>
           )}
 
-          <h2 className="text-xl font-semibold text-gray-700 mb-4">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">
             ブックマークを追加
           </h2>
 
@@ -67,7 +94,10 @@ export default function DashboardClient() {
             保存したブックマーク
           </h2>
 
-          <BookmarkList selectedFolderId={selectedFolderId} />
+          <BookmarkList
+            selectedFolderId={selectedFolderId}
+            bookmarkUpdateKey={bookmarkUpdateKey}
+          />
         </div>
       </main>
     </>

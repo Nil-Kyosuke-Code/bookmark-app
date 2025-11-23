@@ -2,7 +2,7 @@
 // 保存したブックマークを表示するコンポーネント
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArrowUpDown, MoreVertical, Star, FolderOpen } from "lucide-react";
 // ブックマークの型定義
 type Bookmark = {
@@ -20,9 +20,13 @@ type Bookmark = {
 
 type Props = {
   selectedFolderId: string | null;
+  bookmarkUpdateKey: number;
 };
 
-export default function BookmarkList({ selectedFolderId }: Props) {
+export default function BookmarkList({
+  selectedFolderId,
+  bookmarkUpdateKey,
+}: Props) {
   // ブックマーク一覧を保存する変数
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   // 読み込み中かどうか
@@ -66,10 +70,46 @@ export default function BookmarkList({ selectedFolderId }: Props) {
   // フォルダ一覧を取得して表示
   const [folders, setFolders] = useState<any[]>([]);
 
+  // ドラッグ中のブックマークID
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  // ブックマークを取得する関数
+  const fetchBookmarks = useCallback(async () => {
+    console.log("fetchBookmarks呼び出し開始");
+    try {
+      const response = await fetch("/api/bookmarks");
+
+      console.log("API response", response.ok);
+
+      if (response.ok) {
+        const data = await response.json();
+
+        console.log("取得したブックマーク数:", data.length);
+
+        setBookmarks(data);
+
+        console.log("state更新完了");
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // コンポーネントが表示されたときにブックマークを取得
   useEffect(() => {
+    console.log("BookmarkListがマウントされました");
     fetchBookmarks();
-  }, []);
+  }, [fetchBookmarks]);
+
+  // イベントリスナーを登録（ドロップ後に自動更新するため）
+  useEffect(() => {
+    if (bookmarkUpdateKey > 0) {
+      console.log("bookmarkUpdateKey変更を検知!fetchBookmarksを呼びます");
+      fetchBookmarks();
+    }
+  }, [bookmarkUpdateKey, fetchBookmarks]);
 
   // 全てのタグを重複なしで取得する関数
   const getAllTags = () => {
@@ -155,21 +195,6 @@ export default function BookmarkList({ selectedFolderId }: Props) {
 
       default:
         return filtered;
-    }
-  };
-
-  // ブックマークを取得する関数
-  const fetchBookmarks = async () => {
-    try {
-      const response = await fetch("/api/bookmarks");
-      if (response.ok) {
-        const data = await response.json();
-        setBookmarks(data);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -369,6 +394,17 @@ export default function BookmarkList({ selectedFolderId }: Props) {
     setEditTagsInput("");
   };
 
+  // ドラッグ開始時の処理
+  const handleDragStart = (e: React.DragEvent, bookmarkId: string) => {
+    e.dataTransfer.setData("bookmarkId", bookmarkId);
+    setDraggingId(bookmarkId);
+  };
+
+  // ドラッグ終了時の処理
+  const handleDragEnd = () => {
+    setDraggingId(null);
+  };
+
   // 読み込み中の表示
   if (isLoading) {
     return <div className="text-center py-8">読み込み中...</div>;
@@ -546,7 +582,13 @@ export default function BookmarkList({ selectedFolderId }: Props) {
       {getSortedBookmarks().map((bookmark) => (
         <div
           key={bookmark.id}
-          className="bg-white rounded-lg shadow border border-gray-200 hover:shadow-lg transition-shadow overflow-visible"
+          draggable // ドラッグを可能にする
+          onDragStart={(e) => handleDragStart(e, bookmark.id)} // ドラッグ開始時にID保存
+          onDragEnd={handleDragEnd} // ドラッグ終了で状態をリセット
+          className={`bg-white rounded-lg shadow border border-gray-200 hover:shadow-lg transition-shadow overflow-visible ${
+            draggingId === bookmark.id ? "opacity-50" : ""
+          }`}
+          style={{ cursor: "grab" }} // カーソル手のマーク
         >
           <div className="flex items-center">
             {/* サムネイル画像 */}
@@ -561,110 +603,116 @@ export default function BookmarkList({ selectedFolderId }: Props) {
             )}
 
             {/* コンテンツ部分 */}
-            <div className="flex-1 p-4">
+            <div className="flex-1 p-4 min-w-0">
               {/* タイトル・お気に入り・メニュー */}
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-lg font-semibold text-gray-900 flex-1">
-                  <a
-                    href={bookmark.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-blue-600"
-                  >
-                    {bookmark.title || bookmark.url}
-                  </a>
-                </h3>
+              <div className="flex items-start gap-2 mb-2">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-gray-900 flex-1">
+                    <a
+                      href={bookmark.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-blue-600"
+                    >
+                      {bookmark.title || bookmark.url}
+                    </a>
+                  </h3>
+                </div>
 
-                {/* お気に入りボタン */}
-                <button
-                  onClick={() => handleToggleFavorite(bookmark.id)}
-                  className="hover:scale-110 transition-transform"
-                  title={
-                    bookmark.isFavorite ? "お気に入り解除" : "お気に入りに追加"
-                  }
-                >
-                  <Star
-                    className={`w-6 h-6 ${
-                      bookmark.isFavorite
-                        ? "fill-yellow-400 text-yellow-400"
-                        : "text-gray-400"
-                    }`}
-                  />
-                </button>
-
-                {/* 3点ドットメニュー */}
-                <div className="relative">
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {/* お気に入りボタン */}
                   <button
-                    onClick={() =>
-                      setOpenMenuId(
-                        openMenuId === bookmark.id ? null : bookmark.id
-                      )
+                    onClick={() => handleToggleFavorite(bookmark.id)}
+                    className="hover:scale-110 transition-transform"
+                    title={
+                      bookmark.isFavorite
+                        ? "お気に入り解除"
+                        : "お気に入りに追加"
                     }
-                    className="p-1 hover:bg-gray-100 rounded"
                   >
-                    <MoreVertical className="w-5 h-5 text-gray-600" />
+                    <Star
+                      className={`w-6 h-6 ${
+                        bookmark.isFavorite
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-gray-400"
+                      }`}
+                    />
                   </button>
 
-                  {/* メニュー */}
-                  {openMenuId === bookmark.id && (
-                    <div className="absolute right-0 mt-1 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10">
-                      <button
-                        onClick={() => openEditModal(bookmark)}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        タイトルを編集
-                      </button>
+                  {/* 3点ドットメニュー */}
+                  <div className="relative">
+                    <button
+                      onClick={() =>
+                        setOpenMenuId(
+                          openMenuId === bookmark.id ? null : bookmark.id
+                        )
+                      }
+                      className="p-1 hover:bg-gray-100 rounded"
+                    >
+                      <MoreVertical className="w-5 h-5 text-gray-600" />
+                    </button>
 
-                      <button
-                        onClick={() => openEditTagsModal(bookmark)}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        タグを編集
-                      </button>
+                    {/* メニュー */}
+                    {openMenuId === bookmark.id && (
+                      <div className="absolute right-0 mt-1 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                        <button
+                          onClick={() => openEditModal(bookmark)}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          タイトルを編集
+                        </button>
 
-                      <button
-                        onClick={() => {
-                          setShowFolderModal(bookmark.id);
-                          setOpenMenuId(null);
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        フォルダに追加
-                      </button>
+                        <button
+                          onClick={() => openEditTagsModal(bookmark)}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          タグを編集
+                        </button>
 
-                      {/* フォルダ内表示時のみ表示 */}
-                      {selectedFolderId && (
                         <button
                           onClick={() => {
-                            handleRemoveFromFolder(
-                              bookmark.id,
-                              selectedFolderId
-                            );
+                            setShowFolderModal(bookmark.id);
                             setOpenMenuId(null);
                           }}
-                          className="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-gray-100"
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         >
-                          このフォルダから削除
+                          フォルダに追加
                         </button>
-                      )}
 
-                      <button
-                        onClick={() => {
-                          setOpenMenuId(null);
-                          handleDelete(bookmark.id);
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                      >
-                        削除
-                      </button>
-                    </div>
-                  )}
+                        {/* フォルダ内表示時のみ表示 */}
+                        {selectedFolderId && (
+                          <button
+                            onClick={() => {
+                              handleRemoveFromFolder(
+                                bookmark.id,
+                                selectedFolderId
+                              );
+                              setOpenMenuId(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-gray-100"
+                          >
+                            このフォルダから削除
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            setOpenMenuId(null);
+                            handleDelete(bookmark.id);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                        >
+                          削除
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* 説明 */}
               {bookmark.description && (
-                <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                <p className="text-sm text-gray-600 mb-2 line-clamp-1">
                   {bookmark.description}
                 </p>
               )}
@@ -688,18 +736,12 @@ export default function BookmarkList({ selectedFolderId }: Props) {
                 </div>
               )}
 
-              {/* 追加日と削除ボタン */}
-              <div className="flex justify-between items-center mt-2">
+              {/* 追加日 */}
+              <div className="mt-2">
                 <p className="text-xs text-gray-500">
                   追加日:{" "}
                   {new Date(bookmark.createdAt).toLocaleDateString("ja-JP")}
                 </p>
-                <button
-                  onClick={() => handleDelete(bookmark.id)}
-                  className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
-                >
-                  削除
-                </button>
               </div>
             </div>
           </div>
@@ -821,7 +863,9 @@ export default function BookmarkList({ selectedFolderId }: Props) {
       {showFolderModal && (
         <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">フォルダに追加</h3>
+            <h3 className="text-lg text-gray-700 font-semibold mb-4">
+              フォルダに追加
+            </h3>
 
             {/* フォルダ一覧 */}
             <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
@@ -833,7 +877,7 @@ export default function BookmarkList({ selectedFolderId }: Props) {
                 <button
                   key={folder.id}
                   onClick={() => handleAddToFolder(showFolderModal!, folder.id)}
-                  className="w-full text-left px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50 flex items-center gap-2"
+                  className="w-full text-left text-gray-700 px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50 flex items-center gap-2"
                 >
                   <FolderOpen className="w-4 h-4" />
                   {folder.name}
